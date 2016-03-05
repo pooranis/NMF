@@ -1124,8 +1124,8 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	}
 
     # recompute margin fontsizes
-    fontsize_row <- convertUnit(min(unit(fontsize_row, 'points'), unit(0.6*glo$cellheight, 'bigpts')), 'points')
-    fontsize_col <- convertUnit(min(unit(fontsize_col, 'points'), unit(0.6*glo$cellwidth, 'bigpts')), 'points')
+    fontsize_row <- convertUnit(min(unit(fontsize_row, 'points'), unit(glo$cellheight, 'bigpts')), 'points')
+    fontsize_col <- convertUnit(min(unit(fontsize_col, 'points'), unit(glo$cellwidth, 'bigpts')), 'points')
     
 	# Draw matrix
 	if( vplayout('mat') ){
