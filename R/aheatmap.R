@@ -3,6 +3,7 @@
 #' @include colorcode.R
 NULL
 
+
 #library(grid)
 #library(gridBase)
 
@@ -402,10 +403,14 @@ draw_legend = function(color, breaks, legend, gp = gpar(), opts = NULL, dims.onl
         on.exit( upViewport() )
     }
     
-    # compute raltive position for breaks and "ticks"
-	tick_pos = (legend - min(breaks)) / (max(breaks) - min(breaks))
-    breaks = (breaks - min(breaks)) / (max(breaks) - min(breaks))
-    h <- diff(breaks)
+     # compute relative position for breaks and "ticks"
+    n <- length(legend)
+    tick_pos = (1:n - 1)/(n - 1)
+    b <- length(breaks)
+    b = (1:b - 1)/(b - 1)
+    #tick_pos = (legend - min(breaks)) / (max(breaks) - min(breaks))
+    #breaks = (breaks - min(breaks)) / (max(breaks) - min(breaks))
+    h <- diff(b)
     
     txt_shift <- thickness + space + padding
     
@@ -416,7 +421,7 @@ draw_legend = function(color, breaks, legend, gp = gpar(), opts = NULL, dims.onl
     
     if( !isTRUE(opts$horizontal) ){
         x.scale <- unit(opts$flip$h+0, 'npc')
-    	grid.rect(x = x.scale, y = breaks[-length(breaks)], width = thickness, height = h
+    	grid.rect(x = x.scale, y =  seq(0,1,length.out = length(b)-1), width = thickness, height = h
                 , hjust = opts$flip$h + 0, vjust = 0
                 , gp = gpar(fill = color, col = "#FFFFFF00"))
         grid.text(legend_txt, x = flip_coord(txt_shift, opts$flip$h, x.scale), y = tick_pos
@@ -2639,8 +2644,11 @@ aheatmap = function(x
     color <- names(colour_scale)
         
     if( isTRUE(legend) ){
-		if( verbose ) message("Generate colour scale ticks")
-		legend = grid.pretty(range(as.vector(breaks), na.rm = TRUE))
+        if( verbose ) message("Generate colour scale ticks")
+        
+        legend = signif(breaks[seq.int(1, length(breaks), length.out = 4)], 2)
+        
+		#legend = grid.pretty(range(as.vector(breaks), na.rm = TRUE))
 	}else if( !is.numeric(legend) ){
 		legend = NA
 	}
