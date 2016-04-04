@@ -416,7 +416,7 @@ draw_legend = function(color, breaks, legend, gp = gpar(), opts = NULL, dims.onl
     
     if( !isTRUE(opts$horizontal) ){
         x.scale <- unit(opts$flip$h+0, 'npc')
-    	grid.rect(x = x.scale, y = breaks[-length(breaks)], width = thickness, height = 0.01
+    	grid.rect(x = x.scale, y = breaks[-length(breaks)], width = thickness, height = h
                 , hjust = opts$flip$h + 0, vjust = 0
                 , gp = gpar(fill = color, col = "#FFFFFF00"))
         grid.text(legend_txt, x = flip_coord(txt_shift, opts$flip$h, x.scale), y = tick_pos
