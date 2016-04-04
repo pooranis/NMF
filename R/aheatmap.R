@@ -39,7 +39,7 @@ lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
 	rown_width <- rown_width_min <- unit(10, "bigpts")
 	if(!is.null(rown)){
 		longest_rown = which.max(nchar(rown))
-		rown_width <- rown_width_min + unit(1.2, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp, fontsize = fontsize_row)))
+		rown_width <- rown_width_min + unit(1, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp, fontsize = fontsize_row)))
 	}
 	
 	gp = c_gpar(gp, fontsize = fontsize)
