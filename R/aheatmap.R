@@ -21,7 +21,7 @@ lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
 , fontsize, fontsize_row, fontsize_col, gp){
 
     # pre-process layout to determine each component position/presence
-    gl <- .aheatmap_layout(layout)
+    gl <- .aheatmap_layout(layout,main=main)
 
     # annotation data
 	annotation_colors <- annTracks$colors
@@ -143,7 +143,7 @@ lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
                 )
 
 #    aheatmap_layout(layout, size = layout_size); stop()
-    glayout <- vplayout(NULL, layout = layout, size = layout_size)
+    glayout <- vplayout(NULL, layout = layout, size = layout_size, main=main)
     # reoder width/height according to layout
     unique.name <- glayout$name
     # push layout
@@ -663,7 +663,7 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
 
 }
 
-.aheatmap_layout <- function(layout = 'daml', size = NULL){
+.aheatmap_layout <- function(layout = 'daml', size = NULL, main=NULL){
 
     layout <- as.character(layout)
 
@@ -735,10 +735,10 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
     # vertical layout
     elements <- c(setNames(lexique, paste0('c', names(lexique))), mat = 'm', leg = 'L')
     ie <- match(elements, x[[2L]])
-    i <- cbind(ie+1, match('m', x[[1L]]))
+    i <- cbind(ie+2, match('m', x[[1L]]))
     rownames(i) <- names(elements)
     res <- i
-    e_order$v <- c('main', names(elements)[setdiff(order(ie), which(is.na(ie)))], 'sub', 'info')
+    e_order$v <- c('main','sub', names(elements)[setdiff(order(ie), which(is.na(ie)))], 'info')
 
     # data matrix position
     xm <- res['mat', 1]
@@ -759,8 +759,15 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
     # fixed elements
     nc <- length(e_order$h)
     nr <- length(e_order$v)
-    res <- rbind(res, main = c(1, ym)
-			, sub = c(nr-1, ym)
+
+    mainym <- ym
+    if (!is.null(main)) {
+      if ((main$just == "left") || ( !is.null(main$hjust) && main$hjust == 0 )) {
+        mainym <- 1
+      }
+    }
+    res <- rbind(res, main = c(1, mainym)
+			, sub = c(2, mainym)
 			, info = c(nr, ym)
             , aleg = if( with_aleg ) c(xm, nc)
     )
@@ -825,7 +832,7 @@ vplayout <- local(
 	graphic.name <- NULL
 	.index <- 0L
     .layout <- NULL
-	function(x, y, verbose = getOption('verbose'), layout = NULL, ...){
+	function(x, y, verbose = getOption('verbose'), layout = NULL, main=NULL, ...){
 		# initialize the graph name
 		if( is.null(x) ){
             .index <<- .index + 1L
@@ -834,7 +841,7 @@ vplayout <- local(
             if( is.null(layout) || identical(layout, 'default') ){ #default
                 layout <- 'damlLA | daml'
             }
-            .layout <<- .aheatmap_layout(layout, ...)
+            .layout <<- .aheatmap_layout(layout,main=main, ...)
 			return(c(list(name = graphic.name), .layout))
 		}
 		name <- NULL
@@ -1053,8 +1060,23 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	}
 
 	# define grob for main
-	mainGrob <- if( !is.null(main) && !is.grob(main) ) textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
-	subGrob <- if( !is.null(sub) && !is.grob(sub) ) textGrob(sub, gp = c_gpar(gp, fontsize = 0.8 * fontsize))
+#	mainGrob <- if( !is.null(main) && !is.grob(main) ) textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
+	if( !is.null(main)) {
+	  if (is.grob(main)) {
+	    mainGrob <- main
+	  } else {
+	    mainGrob <-  textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
+	  }
+	}
+
+	if( !is.null(sub)) {
+	  if (is.grob(sub)) {
+	    subGrob <- sub
+	  } else {
+	    subGrob <-  textGrob(sub, gp = c_gpar(gp, fontsize = 0.8 * fontsize))
+	  }
+	}
+
 	infoGrob <- if( !is.null(info) && !is.grob(info) ){
 #		infotxt <- paste(strwrap(paste(info, collapse=" | "), width=20), collapse="\n")
 		grobTree(gList(rectGrob(gp = gpar(fill = "grey80"))
@@ -1188,7 +1210,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	}
 
 	# Draw main title
-	if(!is.null(mainGrob) && vplayout('main') ){
+	if(!is.null(mainGrob) && vplayout('main', main=mainGrob) ){
 		grid.draw(mainGrob)
         trace_vp()
 		upViewport()
