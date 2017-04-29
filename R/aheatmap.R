@@ -1067,6 +1067,8 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	  } else {
 	    mainGrob <-  textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
 	  }
+	} else {
+	  mainGrob = NULL
 	}
 
 	if( !is.null(sub)) {
@@ -1075,6 +1077,8 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	  } else {
 	    subGrob <-  textGrob(sub, gp = c_gpar(gp, fontsize = 0.8 * fontsize))
 	  }
+	} else {
+	  subGrob = NULL
 	}
 
 	infoGrob <- if( !is.null(info) && !is.grob(info) ){
