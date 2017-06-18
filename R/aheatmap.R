@@ -75,7 +75,7 @@ lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
 	rown_width <- rown_width_min <- unit(10, "bigpts")
 	if(!is.null(rown)){
 		longest_rown = which.max(nchar(rown))
-		rown_width <- rown_width_min + unit(1.2, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp, fontsize = fontsize_row)))
+		rown_width <- rown_width_min + unit(1, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp, fontsize = fontsize_row)))
 	}
 	
 	gp = c_gpar(gp, fontsize = fontsize)
@@ -177,7 +177,7 @@ lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
                 )
     
 #    aheatmap_layout(layout, size = layout_size); stop()
-    glayout <- ah_vplayout(NULL, layout = layout, size = layout_size, new = FALSE)
+    glayout <- vplayout(NULL, layout = layout, size = layout_size, main=main, new=FALSE)
     # reoder width/height according to layout
     unique.name <- glayout$name
     # push layout
@@ -483,10 +483,14 @@ draw_legend = function(color, breaks, legend, border_color, gp = gpar(), opts = 
         on.exit( upViewport() )
     }
     
-    # compute raltive position for breaks and "ticks"
-	tick_pos = (legend - min(breaks)) / (max(breaks) - min(breaks))
-    breaks = (breaks - min(breaks)) / (max(breaks) - min(breaks))
-    h <- diff(breaks)
+     # compute relative position for breaks and "ticks"
+    n <- length(legend)
+    tick_pos = (1:n - 1)/(n - 1)
+    b <- length(breaks)
+    b = (1:b - 1)/(b - 1)
+    #tick_pos = (legend - min(breaks)) / (max(breaks) - min(breaks))
+    #breaks = (breaks - min(breaks)) / (max(breaks) - min(breaks))
+    h <- diff(b)
     
     txt_shift <- thickness + space + padding
     
@@ -498,7 +502,7 @@ draw_legend = function(color, breaks, legend, border_color, gp = gpar(), opts = 
     leg_gp <- c_gpar(list(fill = color), border_color)
     if( !isTRUE(opts$horizontal) ){
         x.scale <- unit(opts$flip$h+0, 'npc')
-    	grid.rect(x = x.scale, y = breaks[-length(breaks)], width = thickness, height = h
+    	grid.rect(x = x.scale, y =  seq(0,1,length.out = length(b)-1), width = thickness, height = h
                 , hjust = opts$flip$h + 0, vjust = 0
                 , gp = leg_gp)
         grid.text(legend_txt, x = flip_coord(txt_shift, opts$flip$h, x.scale), y = tick_pos
@@ -779,7 +783,7 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
     invisible(gl)
 }
 
-.aheatmap_layout <- function(layout = 'daml', size = NULL){
+.aheatmap_layout <- function(layout = 'daml', size = NULL, main=NULL){
     
     layout <- as.character(layout)
     
@@ -854,7 +858,7 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
     i <- cbind(ie+1, match('m', x[[1L]]))
     rownames(i) <- names(elements)
     res <- i
-    e_order$v <- c('main', names(elements)[setdiff(order(ie), which(is.na(ie)))], 'sub', 'info')
+    e_order$v <- c('main','sub', names(elements)[setdiff(order(ie), which(is.na(ie)))], 'info')
     
     # data matrix position
     xm <- res['mat', 1]
@@ -875,8 +879,15 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
     # fixed elements
     nc <- length(e_order$h)
     nr <- length(e_order$v)
-    res <- rbind(res, main = c(1, ym)
-			, sub = c(nr-1, ym)
+
+    mainym <- ym
+    if (!is.null(main)) {
+      if ((main$just == "left") || ( !is.null(main$hjust) && main$hjust == 0 )) {
+        mainym <- 1
+      }
+    }
+    res <- rbind(res, main = c(1, mainym)
+			, sub = c(2, mainym)
 			, info = c(nr, ym)
             , aleg = if( with_aleg ) c(xm, nc)
     )
@@ -942,7 +953,7 @@ ah_vplayout <- local(
     graphic.name <- NULL
     .index <- 0L
     .layout <- NULL
-    function(x, y = NULL, layout = NULL, verbose = getOption('verbose'), name = NULL, new = TRUE, ...){
+    function(x, y = NULL, layout = NULL, main=NULL, verbose = getOption('verbose'), name = NULL, new = TRUE, ...){
         
         if( missing(x) ){
             return(c(list(name = graphic.name), .layout))
@@ -959,7 +970,7 @@ ah_vplayout <- local(
             if( is.null(layout) || identical(layout, 'default') ){ #default
                 layout <- 'damlLA | daml'
             }
-            .layout <<- .aheatmap_layout(layout, ...)
+            .layout <<- .aheatmap_layout(layout,main=main, ...)
             return(c(list(name = graphic.name), .layout))
         }
         
@@ -986,9 +997,9 @@ ah_vplayout <- local(
      }
  })
 
-vplayout <- function(x, y = NULL, ..., verbose = getOption('verbose')){
+vplayout <- function(x, y = NULL, main = NULL, ..., verbose = getOption('verbose')){
     
-        vpl <- ah_vplayout(x, y, ..., verbose = verbose)
+        vpl <- ah_vplayout(x, y, main, ..., verbose = verbose)
         
         name <- vpl$name
         x <- vpl$x
@@ -1232,8 +1243,27 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	}	
 	
 	# define grob for main 
-	mainGrob <- if( !is.null(main) && !is.grob(main) ) textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
-	subGrob <- if( !is.null(sub) && !is.grob(sub) ) textGrob(sub, gp = c_gpar(gp, fontsize = 0.8 * fontsize))
+#	mainGrob <- if( !is.null(main) && !is.grob(main) ) textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
+	if( !is.null(main)) {
+	  if (is.grob(main)) {
+	    mainGrob <- main
+	  } else {
+	    mainGrob <-  textGrob(main, gp = c_gpar(gp, fontsize = 1.2 * fontsize, fontface="bold"))
+	  }
+	} else {
+	  mainGrob = NULL
+	}
+
+	if( !is.null(sub)) {
+	  if (is.grob(sub)) {
+	    subGrob <- sub
+	  } else {
+	    subGrob <-  textGrob(sub, gp = c_gpar(gp, fontsize = 0.8 * fontsize))
+	  }
+	} else {
+	  subGrob = NULL
+	}
+
 	infoGrob <- if( !is.null(info) && !is.grob(info) ){
 #		infotxt <- paste(strwrap(paste(info, collapse=" | "), width=20), collapse="\n")
 		grobTree(gList(rectGrob(gp = gpar(fill = "grey80"))
@@ -1408,7 +1438,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	}
 
 	# Draw main title
-	if(!is.null(mainGrob) && vplayout('main') ){
+	if(!is.null(mainGrob) && vplayout('main', main=mainGrob) ){
 		grid.draw(mainGrob)
         trace_vp()
 		upViewport()
@@ -1759,9 +1789,13 @@ cluster_mat = function(mat, param, distfun, hclustfun, reorderfun, na.rm=TRUE, s
 			if( verbose ) message("Using clustering method: ", hclustfun)
 			hclust(d, method=hclustfun)
 			
-		}else if( is.function(hclustfun) )
+		} else if( is.function(hclustfun) ) {
 			hclustfun(d)
-		else
+	  } else if (is.hclust(hclustfun)) {
+	    hclustfun
+	  } else if (dendextend::is.dendrogram(hclustfun))  {
+      hclustfun
+		} else {
 			stop("aheatmap - Invalid clustering function: must be a character string or a function")
 	
 		#convert into a dendrogram
@@ -3109,7 +3143,10 @@ aheatmap = function(x
         
     if( isTRUE(legend) ){
 		if( verbose ) message("Generate colour scale ticks")
-		legend = grid.pretty(range(as.vector(breaks), na.rm = TRUE))
+
+        legend = signif(breaks[seq.int(1, length(breaks), length.out = 4)], 2)
+
+		#legend = grid.pretty(range(as.vector(breaks), na.rm = TRUE))
 	}else if( !is.numeric(legend) ){
 		legend = NA
 	}
