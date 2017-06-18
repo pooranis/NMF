@@ -40,7 +40,7 @@ grid.Call <- function (fnname, ...)
 # returning a NULL viewport 
 current.viewport <- function()
 {
-    cv <- grid.Call(grid:::L_currentViewport)
+    cv <- grid.Call(grid:::C_currentViewport)
     if( !is.null(cv) ) grid:::vpFromPushedvp(cv)
 }
 
