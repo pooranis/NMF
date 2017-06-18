@@ -36,177 +36,181 @@ c_gpar <- function(gp, ..., force = FALSE, elmt = NULL){
 }
 
 lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
-, treeheight_col, treeheight_row, legend, main, sub, info
-, annTracks, annotation_legend, cexAnn, layout
-, fontsize, fontsize_row, fontsize_col, gp
-, width = NULL, height =  NULL ){
-
-	verbose <- ah_opts()$verbose
-
-    # pre-process layout to determine each component position/presence
-    gl <- .aheatmap_layout(layout)
+                , treeheight_col, treeheight_row, legend, main, sub, info
+                , annTracks, annotation_legend, cexAnn, layout
+                , fontsize, fontsize_row, fontsize_col, gp
+                , width = NULL, height =  NULL ){
+  
+  verbose <- ah_opts()$verbose
+  message(paste("lo function",cellheight))
+  # pre-process layout to determine each component position/presence
+  gl <- .aheatmap_layout(layout)
+  
+  # create main viewport with requested size
+  glayout <- ah_vplayout(NULL, layout = layout)
+  width <- width %||% unit(1, "npc")
+  if( !is.unit(width) ) width <- unit(width, 'inches')
+  height <- height %||% unit(1, "npc")
+  if( !is.unit(height) ) height <- unit(height, 'inches')
+  hvp_name <- paste('aheatmap', glayout$name, sep='-')
+  if( verbose ) message(sprintf("vp - create and push top viewport '%s' [dimension: %s x %s]", hvp_name, width, height))
+  pushViewport(hvp <- viewport(name=hvp_name, height = height, width = width))
+  on.exit( popViewport() )
+  #
+  
+  # annotation data
+  annotation_colors <- annTracks$colors
+  row_annotation <- annTracks$annRow
+  annotation <- annTracks$annCol
+  
+  gp0 <- gp
+  coln_height <- unit(0, "bigpts")
+  if(!is.null(coln)){
+    longest_coln = which.max(nchar(coln))
+    #		coln_height <- unit(10, "bigpts") +  unit(1.1, "grobheight", textGrob(coln[longest_coln], rot = 90, gp = c_gpar(gp, fontsize = fontsize_col)))
+    #        coln_height <- convertHeight(unit(1, "grobheight", textGrob(coln[longest_coln], rot = 90, gp = c_gpar(gp, fontsize = fontsize_col))), 'bigpts')
+    coln_height <- unit(10, "bigpts") +  unit(1, "grobheight", textGrob(coln[longest_coln], rot = 90, gp = c_gpar(gp, fontsize = fontsize_col)))
+  }
+  
+  rown_width <- rown_width_min <- unit(10, "bigpts")
+  if(!is.null(rown)){
+    longest_rown = which.max(nchar(rown))
+    rown_width <- rown_width_min + unit(1.2, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp, fontsize = fontsize_row)))
+  }
+  
+  gp = c_gpar(gp, fontsize = fontsize)
+  # Legend position
+  if( !is_NA(legend) ) legend_width <- draw_legend(legend = legend, dims.only = TRUE)
+  else legend_width <- unit(0, "bigpts")
+  col_legend_height <- row_legend_width <- unit(0, 'bigpts')
+  if( !isTRUE(gl$options$legend$horizontal) ) row_legend_width <- legend_width 
+  else col_legend_height <- legend_width
+  #
+  
+  
+  .annLegend.dim <- function(annotation, fontsize){
+    # Width of the corresponding legend
+    longest_ann <- unlist(lapply(annotation, names))
+    longest_ann <- longest_ann[which.max(nchar(longest_ann))]
+    annot_legend_width = unit(1, "grobwidth", textGrob(longest_ann, gp = gp)) + unit(10, "bigpts")
     
-    # create main viewport with requested size
-    glayout <- ah_vplayout(NULL, layout = layout)
-	width <- width %||% unit(1, "npc")
-    if( !is.unit(width) ) width <- unit(width, 'inches')
-	height <- height %||% unit(1, "npc")
-    if( !is.unit(height) ) height <- unit(height, 'inches')
-    hvp_name <- paste('aheatmap', glayout$name, sep='-')
-    if( verbose ) message(sprintf("vp - create and push top viewport '%s' [dimension: %s x %s]", hvp_name, width, height))
-    pushViewport(hvp <- viewport(name=hvp_name, height = height, width = width))
-    on.exit( popViewport() )
-    #
+    # width of the legend title
+    annot_legend_title <- names(annotation)[which.max(nchar(names(annotation)))]
+    annot_legend_title_width = unit(1, "grobwidth", textGrob(annot_legend_title, gp = c_gpar(gp, fontface = "bold")))
     
-    # annotation data
-	annotation_colors <- annTracks$colors
-	row_annotation <- annTracks$annRow
-	annotation <- annTracks$annCol
-	
-    gp0 <- gp
-	coln_height <- unit(0, "bigpts")
-	if(!is.null(coln)){
-		longest_coln = which.max(nchar(coln))
-#		coln_height <- unit(10, "bigpts") +  unit(1.1, "grobheight", textGrob(coln[longest_coln], rot = 90, gp = c_gpar(gp, fontsize = fontsize_col)))
-#        coln_height <- convertHeight(unit(1, "grobheight", textGrob(coln[longest_coln], rot = 90, gp = c_gpar(gp, fontsize = fontsize_col))), 'bigpts')
-        coln_height <- unit(10, "bigpts") +  unit(1, "grobheight", textGrob(coln[longest_coln], rot = 90, gp = c_gpar(gp, fontsize = fontsize_col)))
-	}
+    # total width 
+    max(annot_legend_width, annot_legend_title_width) + unit(5, "bigpts")
+  }
+  
+  # Column annotations
+  if( !is_NA(annotation) ){
+    # Column annotation height		
+    annot_height = unit(ncol(annotation) * (cexAnn[2L] * 8 + 2) + 2, "bigpts")
+  }
+  else{
+    annot_height = unit(0, "bigpts")
+  }
+  
+  # add a viewport for the row annotations
+  if ( !is_NA(row_annotation) ) {
+    # Row annotation width		
+    row_annot_width = unit(ncol(row_annotation) * (cexAnn[1L] * 8 + 2) + 2, "bigpts")
+  }
+  else {
+    row_annot_width = unit(0, "bigpts")
+  }
+  
+  # Width of the annotation legend
+  annot_legend_width <- 
+    if( annotation_legend && !is_NA(annotation_colors) ){ 
+      .annLegend.dim(annotation_colors, fontsize)
+    }else unit(0, "bigpts")
+  
+  # Tree height
+  treeheight_col = unit(treeheight_col, "bigpts") + unit(5, "bigpts")
+  treeheight_row = unit(treeheight_row, "bigpts") + unit(5, "bigpts") 
+  
+  # main title
+  main_height <- if(!is.null(main)) unit(1, "grobheight", main) + unit(20, "bigpts") else unit(0, "bigpts")
+  # sub title
+  sub_height <- if(!is.null(sub)) unit(1, "grobheight", sub) + unit(10, "bigpts")	else unit(0, "bigpts")
+  # info panel
+  if( !is.null(info) ){
+    info_height <- unit(1, "grobheight", info) + unit(20, "bigpts")
+    info_width <- unit(1, "grobwidth", info) + unit(10, "bigpts")
+  }else{
+    info_height <- unit(0, "bigpts")
+    info_width <- unit(0, "bigpts")		
+  }
+  
+  # Set cell sizes
+  if(is.na(cellwidth)){
+    matwidth = unit(1, "npc") - rown_width - row_legend_width - row_annot_width  - treeheight_row - annot_legend_width - gl$padding$h
+  }
+  else{
+    matwidth = unit(cellwidth * ncol, "bigpts")
+  }
+  
+  if(is.na(cellheight)){
+    matheight = unit(1, "npc") - treeheight_col - annot_height - main_height - coln_height - col_legend_height - sub_height - info_height - gl$padding$v
     
-	rown_width <- rown_width_min <- unit(10, "bigpts")
-	if(!is.null(rown)){
-		longest_rown = which.max(nchar(rown))
-		rown_width <- rown_width_min + unit(1, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp, fontsize = fontsize_row)))
-	}
-	
-	gp = c_gpar(gp, fontsize = fontsize)
-	# Legend position
-	if( !is_NA(legend) ) legend_width <- draw_legend(legend = legend, dims.only = TRUE)
-	else legend_width <- unit(0, "bigpts")
-    col_legend_height <- row_legend_width <- unit(0, 'bigpts')
-    if( !isTRUE(gl$options$legend$horizontal) ) row_legend_width <- legend_width 
-    else col_legend_height <- legend_width
-    #
-    
-	
-	.annLegend.dim <- function(annotation, fontsize){
-		# Width of the corresponding legend
-		longest_ann <- unlist(lapply(annotation, names))
-		longest_ann <- longest_ann[which.max(nchar(longest_ann))]
-		annot_legend_width = unit(1, "grobwidth", textGrob(longest_ann, gp = gp)) + unit(10, "bigpts")
-		
-		# width of the legend title
-		annot_legend_title <- names(annotation)[which.max(nchar(names(annotation)))]
-		annot_legend_title_width = unit(1, "grobwidth", textGrob(annot_legend_title, gp = c_gpar(gp, fontface = "bold")))
-		
-		# total width 
-		max(annot_legend_width, annot_legend_title_width) + unit(5, "bigpts")
-	}
-	
-	# Column annotations
-	if( !is_NA(annotation) ){
-		# Column annotation height		
-		annot_height = unit(ncol(annotation) * (cexAnn[2L] * 8 + 2) + 2, "bigpts")
-	}
-	else{
-		annot_height = unit(0, "bigpts")
-	}
-	
-	# add a viewport for the row annotations
-	if ( !is_NA(row_annotation) ) {
-		# Row annotation width		
-		row_annot_width = unit(ncol(row_annotation) * (cexAnn[1L] * 8 + 2) + 2, "bigpts")
-	}
-	else {
-		row_annot_width = unit(0, "bigpts")
-	}
-	
-	# Width of the annotation legend
-    annot_legend_width <- 
-		if( annotation_legend && !is_NA(annotation_colors) ){ 
-			.annLegend.dim(annotation_colors, fontsize)
-		}else unit(0, "bigpts")
-    
-	# Tree height
-	treeheight_col = unit(treeheight_col, "bigpts") + unit(5, "bigpts")
-	treeheight_row = unit(treeheight_row, "bigpts") + unit(5, "bigpts") 
-	
-	# main title
-	main_height <- if(!is.null(main)) unit(1, "grobheight", main) + unit(20, "bigpts") else unit(0, "bigpts")
-	# sub title
-	sub_height <- if(!is.null(sub)) unit(1, "grobheight", sub) + unit(10, "bigpts")	else unit(0, "bigpts")
-	# info panel
-	if( !is.null(info) ){
-		info_height <- unit(1, "grobheight", info) + unit(20, "bigpts")
-		info_width <- unit(1, "grobwidth", info) + unit(10, "bigpts")
-	}else{
-		info_height <- unit(0, "bigpts")
-		info_width <- unit(0, "bigpts")		
-	}
-	
-	# Set cell sizes
-	if(is.na(cellwidth)){
-		matwidth = unit(1, "npc") - rown_width - row_legend_width - row_annot_width  - treeheight_row - annot_legend_width - gl$padding$h
-	}
-	else{
-		matwidth = unit(cellwidth * ncol, "bigpts")
-	}
-
-	if(is.na(cellheight)){
-		matheight = unit(1, "npc") - treeheight_col - annot_height - main_height - coln_height - col_legend_height - sub_height - info_height - gl$padding$v
-	
-		# recompute the cell width depending on the automatic fontsize
-		if( is.na(cellwidth) && !is.null(rown) ){
-			cellheight <- convertHeight(unit(1, "grobheight", rectGrob(0,0, matwidth, matheight)), "bigpts", valueOnly = T) / nrow
-			fontsize_row <- convertUnit(min(unit(fontsize_row, 'points'), unit(0.9*cellheight, 'bigpts')), 'points')
-			rown_width <- rown_width_min + unit(1.2, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp0, fontsize = fontsize_row)))
-			matwidth <- unit(1, "npc") - rown_width - row_legend_width - row_annot_width  - treeheight_row - annot_legend_width - gl$padding$h
-		}
-	}
-	else{
-		matheight = unit(cellheight * nrow, "bigpts")
-	}	
-	
-    # HACK: 
-	# - use 6 instead of 5 column for the row_annotation
-	# - take into account the associated legend's width
-	# Produce layout()
-    layout_size <- list(
-                    list(rtree = treeheight_row, rann = row_annot_width, mat = matwidth, rnam = rown_width, leg = legend_width, aleg = annot_legend_width)
-                    , list(main = main_height, ctree = treeheight_col, cann = annot_height, mat = matheight, cnam = coln_height, leg = legend_width
-                            , sub = sub_height, info = info_height)
-                )
-    
-#    aheatmap_layout(layout, size = layout_size); stop()
-    glayout <- vplayout(NULL, layout = layout, size = layout_size, main=main, new=FALSE)
-    # reoder width/height according to layout
-    unique.name <- glayout$name
-    # push layout
-	lo <- glayout$grid.layout
-    # drop grid layout spec from result object
-    glayout$grid.layout <- NULL
-    # re-push vp with complete layout
-    popViewport()
-    on.exit()
-    if( verbose ) message(sprintf("vp - re-create and push top viewport '%s' with complete layout", hvp_name, hvp$width, hvp$height))
-    hvp <- viewport(name=paste('aheatmap', unique.name, sep='-'), layout = lo, width = hvp$width, height = hvp$height)
-	pushViewport(hvp)
-	
-	#grid.show.layout(lo); stop('sas')
-	# Get cell dimensions
-    cellwidth <- cellheight <- 0 
-	if( vplayout('mat') ){
-    	cellwidth = convertWidth(unit(1/ncol, "npc"), "bigpts")
-    	cellheight = convertHeight(unit(1/nrow, "npc"), "bigpts")
-        upViewport()
+    # recompute the cell width depending on the automatic fontsize
+    if( is.na(cellwidth) && !is.null(rown) ){
+      cellheight <- convertHeight(unit(1, "grobheight", rectGrob(0,0, matwidth, matheight)), "bigpts", valueOnly = T) / nrow
+      fontsize_row <- convertUnit(min(unit(fontsize_row, 'points'), unit(0.9*cellheight, 'bigpts')), 'points')
+      rown_width <- rown_width_min + unit(1.2, "grobwidth", textGrob(rown[longest_rown], gp = c_gpar(gp0, fontsize = fontsize_row)))
+      matwidth <- unit(1, "npc") - rown_width - row_legend_width - row_annot_width  - treeheight_row - annot_legend_width - gl$padding$h
     }
-		
-	height <- as.numeric(convertHeight(sum(lo$height), "inches"))
-	width <- as.numeric(convertWidth(sum(lo$width), "inches"))
-	# Return minimal cell dimension in bigpts to decide if borders are drawn
-	mindim = convertUnit(min(cellwidth, cellheight), 'bigpts', valueOnly = TRUE) 
-	return( list(width=width, height=height, vp=hvp
-                , mindim=mindim, cellwidth=cellwidth, cellheight=cellheight
-                , layout = glayout) )
+  }
+  else {
+    message(paste("mat if then ch", cellheight))
+    matheight = unit(cellheight * nrow, "bigpts")
+    message(paste("mat if then matheight", matheight))
+  }	
+  
+  # HACK: 
+  # - use 6 instead of 5 column for the row_annotation
+  # - take into account the associated legend's width
+  # Produce layout()
+  layout_size <- list(
+    list(rtree = treeheight_row, rann = row_annot_width, mat = matwidth, rnam = rown_width, leg = legend_width, aleg = annot_legend_width)
+    , list(main = main_height, ctree = treeheight_col, cann = annot_height, mat = matheight, cnam = coln_height, leg = legend_width
+           , sub = sub_height, info = info_height)
+  )
+  
+  #    aheatmap_layout(layout, size = layout_size); stop()
+  glayout <- ah_vplayout(NULL, layout = layout, size = layout_size, main=main, new=FALSE)
+  # reoder width/height according to layout
+  unique.name <- glayout$name
+  # push layout
+  lo <- glayout$grid.layout
+  # drop grid layout spec from result object
+  glayout$grid.layout <- NULL
+  # re-push vp with complete layout
+  popViewport()
+  on.exit()
+  if( verbose ) message(sprintf("vp - re-create and push top viewport '%s' with complete layout", hvp_name, hvp$width, hvp$height))
+  hvp <- viewport(name=paste('aheatmap', unique.name, sep='-'), layout = lo, width = hvp$width, height = hvp$height)
+  pushViewport(hvp)
+  
+  #grid.show.layout(lo); stop('sas')
+  # Get cell dimensions
+  cellwidth <- cellheight <- 0 
+  if( vplayout('mat') ){
+    message(convertHeight(unit(1,"npc"), "bigpts" ))
+    cellwidth = convertWidth(unit(1/ncol, "npc"), "bigpts")
+    cellheight = convertHeight(unit(1/nrow, "npc"), "bigpts")
+    message(paste("end lo function", cellwidth, cellheight, nrow, ncol))
+    upViewport()
+  }
+
+  height <- as.numeric(convertHeight(sum(lo$height), "inches"))
+  width <- as.numeric(convertWidth(sum(lo$width), "inches"))
+  # Return minimal cell dimension in bigpts to decide if borders are drawn
+  mindim = convertUnit(min(cellwidth, cellheight), 'bigpts', valueOnly = TRUE) 
+  return( list(width=width, height=height, vp=hvp
+               , mindim=mindim, cellwidth=cellwidth, cellheight=cellheight
+               , layout = glayout) )
 }
 
 .grid_dendrogram <- function(hc, horiz = FALSE, flip = FALSE){
@@ -855,7 +859,7 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
     # vertical layout
     elements <- c(setNames(lexique, paste0('c', names(lexique))), mat = 'm', leg = 'L')
     ie <- match(elements, x[[2L]])
-    i <- cbind(ie+1, match('m', x[[1L]]))
+    i <- cbind(ie+2, match('m', x[[1L]]))
     rownames(i) <- names(elements)
     res <- i
     e_order$v <- c('main','sub', names(elements)[setdiff(order(ie), which(is.na(ie)))], 'info')
@@ -886,11 +890,7 @@ aheatmap_layout <- function(layout = 'daml', size = NULL){
         mainym <- 1
       }
     }
-    res <- rbind(res, main = c(1, mainym)
-			, sub = c(2, mainym)
-			, info = c(nr, ym)
-            , aleg = if( with_aleg ) c(xm, nc)
-    )
+    res <- rbind(res, main = c(1, mainym), sub = c(2, mainym), info = c(nr, ym), aleg = if( with_aleg ) c(xm, nc))
     
     colnames(res) <- c('x', 'y')
     res <- res[!is.na(res[, 1]) & !is.na(res[, 2]), ]
@@ -998,29 +998,29 @@ ah_vplayout <- local(
  })
 
 vplayout <- function(x, y = NULL, main = NULL, ..., verbose = getOption('verbose')){
-    
-        vpl <- ah_vplayout(x, y, main, ..., verbose = verbose)
-        
-        name <- vpl$name
-        x <- vpl$x
-        
-		if( !is.numeric(x) ){    			
-			if( !missing(y) && is(y, 'viewport') ){
-				y$name <- name
-				return(pushViewport(y))			
-			}
-            #stop("aheatmap - invalid component name [", x, ']')
-            # try finding an existing viewport
-			if( !is.null(tryViewport(name, verbose=verbose)) ) return(TRUE)
-            # early exit if viewport label was not resolved
-            if( is.null(vpl$x) ) return(FALSE)
-		}
-        y <- vpl$y
-        
-		if( verbose ) message(sprintf("vp - create '%s' [%s x %s]", name, x, y))
-		pushViewport(viewport(layout.pos.row = x, layout.pos.col = y, name=name))
-        TRUE
-	}	
+  oldx <- x
+  vpl <- ah_vplayout(x, y, main, ..., verbose = verbose)
+  
+  name <- vpl$name
+  x <- vpl$x
+
+  if( !is.numeric(x) ){    			
+    if( !missing(y) && is(y, 'viewport') ){
+      y$name <- name
+      return(pushViewport(y))			
+    }
+    #stop("aheatmap - invalid component name [", x, ']')
+    # try finding an existing viewport
+    message(paste("x is not numeric", x))
+    if( !is.null(tryViewport(name, verbose=verbose)) ) return(TRUE)
+    # early exit if viewport label was not resolved
+    if( is.null(vpl$x) ) return(FALSE)
+  }
+  y <- vpl$y
+#  if( verbose ) message(sprintf("vp - create '%s' [%s x %s]", name, x, y))
+  pushViewport(viewport(layout.pos.row = x, layout.pos.col = y, name=name))
+  TRUE
+}	
 #})
 
 #gt <- function(){
@@ -1282,7 +1282,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
     }
     fontsize_row <- cexRow0 * fontsize
     fontsize_col <- cexCol0 * fontsize
-
+  message(cellheight)
 	# Set layout     
 	glo = lo(coln = colnames(matrix), rown = rownames(matrix), nrow = nrow(matrix), ncol = ncol(matrix)
 	, cellwidth = cellwidth, cellheight = cellheight
@@ -1294,6 +1294,8 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	, main = mainGrob, sub = subGrob, info = infoGrob, gp = gp
     , width = if( writeToFile && !is_NA(width) ) width
     , height = if( writeToFile && !is_NA(height) ) height)
+	
+	message(glo$cellheight)
     
     # extract options
     loptions <- glo$layout$options 
@@ -1797,7 +1799,7 @@ cluster_mat = function(mat, param, distfun, hclustfun, reorderfun, na.rm=TRUE, s
       hclustfun
 		} else {
 			stop("aheatmap - Invalid clustering function: must be a character string or a function")
-	
+		}
 		#convert into a dendrogram
 		dh <- as.dendrogram(hc)
 	
