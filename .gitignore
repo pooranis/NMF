@@ -1,3 +1,7 @@
 # ignore eclipse files
 .project
 .settings
+.Rproj.user
+.Rhistory
+*~
+.DS_Store
