@@ -331,7 +331,7 @@ draw_matrix = function(matrix, border_color, txt = NULL, gp = gpar()){
 	}
 }
 
-draw_colnames = function(coln, gp = gpar()){
+draw_colnames = function(coln, gp = gpar(), col_hjust=0, coly = NULL){
 
 	m = length(coln)
 
@@ -343,8 +343,11 @@ draw_colnames = function(coln, gp = gpar()){
 	if( gwidth < width ){
 		rot <- 270
 		vjust <- 0.5
-		hjust <- 0
+		hjust <- col_hjust
 		y <- unit(1, 'npc') - unit(5, 'bigpts')
+		if (!is.null(coly)) {
+      y <- coly
+		}
 	}else{
 		rot <- 0
 		vjust <- 0.5
@@ -360,10 +363,11 @@ draw_colnames = function(coln, gp = gpar()){
 }
 
 # draw rownames first row at bottom, last on top
-draw_rownames = function(rown, gp = gpar()){
+draw_rownames = function(rown, gp = gpar(), rowx=NULL){
 	n = length(rown)
 	y = (1:n)/n - 1/2/n
-	grid.text(rown, x = unit(5, "bigpts"), y = y, vjust = 0.5, hjust = 0, gp = gp)
+	if (is.null(rowx)) rowx = unit(5, "bigpts")
+	grid.text(rown, x = rowx, y = y, vjust = 0.5, hjust = 0, gp = gp)
 }
 
 
@@ -501,8 +505,10 @@ draw_annotation_legend = function(annotation_colors, border_color, gp = gpar()){
 
 	text_height = convertHeight(unit(1, "grobheight", textGrob("FGH", gp = gp)), "bigpts")
 	for(i in names(annotation_colors)){
-		grid.text(i, x = 0, y = y, vjust = 1, hjust = 0, gp = c_gpar(gp, fontface = "bold"))
-		y = y - 1.5 * text_height
+	  gp_title <- gp
+	  gp_title$lineheight <- 0.9
+		gt_title <- grid.text(i, x = 0, y = y, vjust = 1, hjust = 0, gp = c_gpar(gp_title, fontface = "bold"))
+		y = y - convertHeight(heightDetails(gt_title), "bigpts")
 		#if(class(annotation[[i]]) %in% c("character", "factor")){
 		acol <- annotation_colors[[i]]
 		if( attr(acol, 'afactor') ){
@@ -1000,7 +1006,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 	, main=NULL, sub=NULL, info=NULL
     , layout = NULL
 	, verbose=getOption('verbose')
-	, gp = gpar()){
+	, gp = gpar(), col_hjust=0, coly=NULL, rowx=NULL){
 
 	annotation_colors <- annTracks$colors
 	row_annotation <- annTracks$annRow
@@ -1173,14 +1179,14 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
 
 	# Draw colnames
 	if(length(colnames(matrix)) != 0 && vplayout('cnam') ){
-		draw_colnames(colnames(matrix), gp = c_gpar(gp, fontsize = fontsize_col))
+		draw_colnames(colnames(matrix), gp = c_gpar(gp, fontsize = fontsize_col), col_hjust = col_hjust, coly=coly)
         trace_vp()
 		upViewport()
 	}
 
 	# Draw rownames
 	if(length(rownames(matrix)) != 0 && vplayout('rnam') ){
-		draw_rownames(rownames(matrix), gp = c_gpar(gp, fontsize = fontsize_row))
+		draw_rownames(rownames(matrix), gp = c_gpar(gp, fontsize = fontsize_row), rowx=rowx)
         trace_vp()
 		upViewport()
 	}
@@ -2232,6 +2238,9 @@ trace_vp <- local({.on <- FALSE
 #'
 #' @param gp graphical parameters for the text used in plot. Parameters passed to
 #' \code{\link{grid.text}}, see \code{\link{gpar}}.
+#' @param col_hjust hjust parameter for column labels
+#' @param coly object of type \link[grid]{unit}. distance (y parameter) of column labels from heatmap matrix
+#' @param rowx object of type \link[grid]{unit}. distance (x parameter) of row labels from heatmap matrix
 #'
 #' @author
 #' Original version of \code{pheatmap}: Raivo Kolde
@@ -2319,87 +2328,9 @@ trace_vp <- local({.on <- FALSE
 #' annotation = data.frame(Var1 = factor(1:p %% 2 == 0, labels = c("Class1", "Class2")), Var2 = 1:10)
 #' aheatmap(x, annCol = annotation)
 #'
-#' @demo Annotated heatmaps
-#'
-#' # Generate random data
-#' n <- 50; p <- 20
-#' x <- abs(rmatrix(n, p, rnorm, mean=4, sd=1))
-#' x[1:10, seq(1, 10, 2)] <- x[1:10, seq(1, 10, 2)] + 3
-#' x[11:20, seq(2, 10, 2)] <- x[11:20, seq(2, 10, 2)] + 2
-#' rownames(x) <- paste("ROW", 1:n)
-#' colnames(x) <- paste("COL", 1:p)
-#'
-#' ## Scaling
-#' aheatmap(x, scale = "row")
-#' aheatmap(x, scale = "col") # partially matched to 'column'
-#' aheatmap(x, scale = "r1") # each row sum up to 1
-#' aheatmap(x, scale = "c1") # each colum sum up to 1
-#'
-#' ## Heatmap colors
-#' aheatmap(x, color = colorRampPalette(c("navy", "white", "firebrick3"))(50))
-#' # color specification as an integer: use R basic colors
-#' aheatmap(x, color = 1L)
-#' # color specification as a negative integer: use reverse basic palette
-#' aheatmap(x, color = -1L)
-#' # color specification as a numeric: use HCL color
-#' aheatmap(x, color = 1)
-#' # color for NA values
-#' y <- x
-#' y[sample(length(y), p)] <- NA
-#' aheatmap(y)
-#' aheatmap(y, na.color = 'black')
-#'
-#' # do not cluster the rows
-#' aheatmap(x, Rowv = NA)
-#' # no heatmap legend
-#' aheatmap(x, legend = FALSE)
-#' # cell and font size
-#' aheatmap(x, cellwidth = 10, cellheight = 5)
-#'
-#' # directly write into a file
-#' aheatmap(x, cellwidth = 15, cellheight = 12, fontsize = 8, filename = "aheatmap.pdf")
-#' unlink('aheatmap.pdf')
-#'
-#' # Generate column annotations
-#' annotation = data.frame(Var1 = factor(1:p %% 2 == 0, labels = c("Class1", "Class2")), Var2 = 1:10)
-#'
-#' aheatmap(x, annCol = annotation)
-#' aheatmap(x, annCol = annotation, annLegend = FALSE)
-#'
-#'
-#' # Specify colors
-#' Var1 = c("navy", "darkgreen")
-#' names(Var1) = c("Class1", "Class2")
-#' Var2 = c("lightgreen", "navy")
-#'
-#' ann_colors = list(Var1 = Var1, Var2 = Var2)
-#'
-#' aheatmap(x, annCol = annotation, annColors = ann_colors)
-#'
-#' # Specifying clustering from distance matrix
-#' drows = dist(x, method = "minkowski")
-#' dcols = dist(t(x), method = "minkowski")
-#' aheatmap(x, Rowv = drows, Colv = dcols)
-#'
-#' # Display text in each cells
-#' t <- outer(as.character(outer(letters, letters, paste0)), letters, paste0)[1:n, 1:p]
-#' aheatmap(x, txt = t)
-#' # NA values are shown as empty cells
-#' t.na <- t
-#' t.na[sample(length(t.na), 500)] <- NA # half of the cells
-#' aheatmap(x, txt = t.na)
-#'
-#' # Borders
-#' # all
-#' aheatmap(x, annCol = annotation, border = TRUE)
-#' # around data matrix
-#' aheatmap(x, annCol = annotation, border = list(matrix = TRUE))
-#' # around cells only
-#' aheatmap(x, annCol = annotation, border = list(cell = TRUE))
-#' # finer control
-#' aheatmap(x, annCol = annotation, border = list(matrix = list(col = 'blue', lwd=2), annCol = 'green', annLeg = 'grey'))
 #'
 #' @export
+#'
 aheatmap = function(x
 , color = '-RdYlBu2:100', type = c('rect', 'circle', 'roundrect'), na.color = NA
 , breaks = NA, border_color=NA, cellwidth = NA, cellheight = NA, scale = "none"
@@ -2415,7 +2346,7 @@ aheatmap = function(x
 , fontsize=10, cexRow = min(0.2 + 1/log10(nr), 1.2), cexCol = min(0.2 + 1/log10(nc), 1.2)
 , filename = NA, width = NA, height = NA
 , main = NULL, sub = NULL, info = NULL
-, verbose=getOption('verbose'), trace = verbose > 1, gp = gpar()){
+, verbose=getOption('verbose'), trace = verbose > 1, gp = gpar(), col_hjust=0, coly=NULL, rowx=NULL){
 
 	# set verbosity level
 	ol <- lverbose(verbose)
@@ -2740,7 +2671,7 @@ aheatmap = function(x
 	, fontsize = fontsize, fontsize_row = cexRow * fontsize, fontsize_col = cexCol * fontsize
 	, main = main, sub = sub, info = info, layout = layout
 	, verbose = verbose
-	, gp = gp)
+	, gp = gp, col_hjust = col_hjust, coly=coly, rowx=rowx)
 
 	# return info about the plot
 	invisible(res)
@@ -2797,7 +2728,7 @@ if( FALSE ){
 
 	toto <- function(new=FALSE){
 
-		library(RGraphics)
+#		library(RGraphics)
 		set.seed(123456)
 		x <- matrix(runif(30*20), 30)
 		x <- crossprod(x)
