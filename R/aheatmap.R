@@ -111,6 +111,7 @@ lo <- function (rown, coln, nrow, ncol, cellheight, cellwidth
 	# Set cell sizes
 	if(is.na(cellwidth)){
 		matwidth = unit(1, "npc") - rown_width - row_legend_width - row_annot_width  - treeheight_row - annot_legend_width - gl$padding$h
+		if (getOption('verbose')) print(paste("cellwidth", convertUnit(matwidth, unitTo = "bigpts", valueOnly = T)/ncol))
 	}
 	else{
 		matwidth = unit(cellwidth * ncol, "bigpts")
@@ -302,6 +303,13 @@ draw_matrix = function(matrix, border_color, txt = NULL, gp = gpar()){
     draw_cell.circle <- function(i, gp){
         grid.circle(x = x[i], y = y, r = radius[sign(matrix[,i]) + 2] * abs(matrix[,i]), gp = gp)
     }
+    draw_cell.fixedcircle <- function(i, gp){
+      r <- min(1/n, 1/m)/2
+      if (m > n) {
+        r <- convertUnit(unit(r, "npc"), "npc", axisFrom = "x", axisTo = "y")
+      }
+      grid.circle(x = x[i], y = y, r = r, gp = gp)
+    }
     #
     draw_cell <- get(paste0('draw_cell.', type), mode = 'function', inherits = FALSE)
     ##
@@ -397,14 +405,13 @@ draw_legend = function(color, breaks, legend, gp = gpar(), opts = NULL, dims.onl
         if( opts$pos == 'middle' ) shift <- shift * .5
         else if( opts$pos == 'bottom' && !isTRUE(opts$horizontal) ) shift <- unit(0, "npc")
         else if( opts$pos == 'top' && isTRUE(opts$horizontal) ) shift <- unit(0, "npc")
-
         if( !isTRUE(opts$horizontal) ){
             pushViewport(viewport(x = 0, y = shift, just = c(0, 0), height = size))
         }else{
             pushViewport(viewport(y = 0, x = shift, just = c(0, 0), width = size))
         }
-
         on.exit( upViewport() )
+
     }
 
      # compute relative position for breaks and "ticks"
@@ -433,12 +440,16 @@ draw_legend = function(color, breaks, legend, gp = gpar(), opts = NULL, dims.onl
                             , gp = gp)
     }else{
         y.scale <- unit(!opts$flip$v+0, 'npc')
-        grid.rect(y = y.scale, x = breaks[-length(breaks)], height = thickness, width = h
-                , hjust = 0, vjust = !opts$flip$v
-                , gp = gpar(fill = color, col = "#FFFFFF00"))
+        # grid.rect(y = y.scale, x = breaks[-length(breaks)], height = thickness, width = h
+        #         , hjust = 0, vjust = !opts$flip$v
+        #         , gp = gpar(fill = color, col = "#FFFFFF00"))
+        grid.rect(y = y.scale, x = seq(0,1,length.out = length(b)-1), height = thickness, width = h
+                  , hjust = 0, vjust = !opts$flip$v
+                  , gp = gpar(fill = color, col = "#FFFFFF00"))
         grid.text(legend_txt, y = flip_coord(txt_shift, !opts$flip$v, y.scale), x = tick_pos
                             , hjust = 0.5, vjust = !opts$flip$v + 0
                             , gp = gp)
+        trace_vp()
     }
 }
 
@@ -1171,7 +1182,7 @@ heatmap_motor = function(matrix, border_color, cellwidth, cellheight
     	#d(matrix)
         # outer border
         if( !is_NA(border_color$matrix$col) ){
-            grid.rect(gp = border_gpar(border_color$matrix))
+            grid.rect(gp = gpar(border_color$matrix, fill="transparent"))
         }
         trace_vp()
     	upViewport()
@@ -1970,7 +1981,10 @@ trace_vp <- local({.on <- FALSE
             .on <<- on
             return(old)
         }
-        if( .on ) grid.rect(gp = gpar(col = "blue", lwd = 2))
+        if( .on ) {
+          grid.rect(gp = gpar(col = "blue", lwd = 2, fill="transparent"))
+          grid.text(current.viewport(), gp=gpar(col="blue"))
+        }
     }
 })
 
@@ -2333,7 +2347,7 @@ trace_vp <- local({.on <- FALSE
 #' @export
 #'
 aheatmap = function(x
-, color = '-RdYlBu2:100', type = c('rect', 'circle', 'roundrect'), na.color = NA
+, color = '-RdYlBu2:100', type = c('rect', 'circle', 'roundrect','fixedcircle'), na.color = NA
 , breaks = NA, border_color=NA, cellwidth = NA, cellheight = NA, scale = "none"
 , Rowv=TRUE, Colv=TRUE
 , revC = identical(Colv, "Rowv") || is_NA(Rowv) || (is.integer(Rowv) && length(Rowv) > 1)
