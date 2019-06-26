@@ -307,6 +307,8 @@ draw_matrix = function(matrix, border_color, txt = NULL, gp = gpar()){
       r <- min(1/n, 1/m)/2
       if (m > n) {
         r <- convertUnit(unit(r, "npc"), "npc", axisFrom = "x", axisTo = "y")
+      } else {
+        r <- convertUnit(unit(r, "npc"), "npc", axisFrom = "y", axisTo = "x")
       }
       grid.circle(x = x[i], y = y, r = r, gp = gp)
     }
@@ -2048,7 +2050,8 @@ trace_vp <- local({.on <- FALSE
 #'
 #' @param type Type of heatmap.
 #' Options are \code{'rect'} for classic rectangular cells,
-#' \code{'circle'} for circles or \code{'roundrect'} for rectangles with rounded corners.
+#' \code{'circle'} for circles, \code{'fixedcircle'} for circles of fixed radius,
+#'  or \code{'roundrect'} for rectangles with rounded corners.
 #'
 #' @param na.color Specifies the colour to use for \code{NA} values.
 #' Setting to \code{NA} (default) produces uncoloured cells (white).

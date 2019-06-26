@@ -4,7 +4,7 @@
 \alias{aheatmap}
 \title{Annotated Heatmaps}
 \usage{
-aheatmap(x, color = "-RdYlBu2:100", type = c("rect", "circle", "roundrect"),
+aheatmap(x, color = "-RdYlBu2:100", type = cc('rect', 'circle', 'roundrect','fixedcircle'),
   na.color = NA, breaks = NA, border_color = NA, cellwidth = NA,
   cellheight = NA, scale = "none", Rowv = TRUE, Colv = TRUE,
   revC = identical(Colv, "Rowv") || is_NA(Rowv) || (is.integer(Rowv) &&
@@ -46,7 +46,8 @@ the default colour palette is specified as '-RdYlBu2:100'.}
 
 \item{type}{Type of heatmap.
 Options are \code{'rect'} for classic rectangular cells,
-\code{'circle'} for circles or \code{'roundrect'} for rectangles with rounded corners.}
+\code{'circle'} for circles, \code{'fixedcircle'} for circles of fixed radius,
+or \code{'roundrect'} for rectangles with rounded corners.}
 
 \item{na.color}{Specifies the colour to use for \code{NA} values.
 Setting to \code{NA} (default) produces uncoloured cells (white).
